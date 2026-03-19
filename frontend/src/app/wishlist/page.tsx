@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useApp } from "@/lib/store";
+import { formatPrice } from "@/lib/format";
 
 export default function WishlistPage() {
   const { wishlist, removeFromWishlist, addToCart } = useApp();
@@ -89,7 +90,7 @@ export default function WishlistPage() {
               </div>
 
               <div className="flex items-center gap-2 mb-3">
-                <span className="text-base font-bold text-warm-text">${item.price.toFixed(2)}</span>
+                <span className="text-base font-bold text-warm-text">{formatPrice(item.price)}</span>
               </div>
 
               <p className={`text-[10px] font-medium mb-3 ${item.countInStock > 0 ? "text-sage" : "text-blush"}`}>

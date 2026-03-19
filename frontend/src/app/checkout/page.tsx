@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useApp } from "@/lib/store";
 import { ordersAPI } from "@/lib/api";
+import { formatPrice } from "@/lib/format";
 
 function SuccessAnimation() {
   const [show, setShow] = useState(false);
@@ -100,7 +101,7 @@ export default function CheckoutPage() {
       addNotification({
         type: "order_placed",
         title: "Order Confirmed!",
-        message: `Your order of $${cartTotal.toFixed(2)} has been placed successfully. We'll notify you when it's delivered.`,
+        message: `Your order of ${formatPrice(cartTotal)} has been placed successfully. We'll notify you when it's delivered.`,
       });
       setOrderSuccess(true);
       setTimeout(() => setContentShow(true), 800);
@@ -223,14 +224,14 @@ export default function CheckoutPage() {
                   <p className="text-sm font-medium text-warm-text truncate">{item.name}</p>
                   <p className="text-xs text-warm-muted">Qty: {item.quantity}</p>
                 </div>
-                <span className="text-sm font-semibold text-warm-text">${(item.price * item.quantity).toFixed(2)}</span>
+                <span className="text-sm font-semibold text-warm-text">{formatPrice(item.price * item.quantity)}</span>
               </div>
             ))}
           </div>
           <div className="border-t border-warm-border pt-4">
             <div className="flex justify-between font-[Georgia] font-bold text-lg text-warm-text">
               <span>Total</span>
-              <span>${cartTotal.toFixed(2)}</span>
+              <span>{formatPrice(cartTotal)}</span>
             </div>
           </div>
         </div>
@@ -240,7 +241,7 @@ export default function CheckoutPage() {
           disabled={loading}
           className="w-full bg-warm-text text-white py-3 rounded-lg font-medium text-sm hover:bg-warm-text/90 hover:shadow-lg transition disabled:opacity-50"
         >
-          {loading ? "Placing Order..." : `Place Order - $${cartTotal.toFixed(2)}`}
+          {loading ? "Placing Order..." : `Place Order - ${formatPrice(cartTotal)}`}
         </button>
       </form>
     </div>

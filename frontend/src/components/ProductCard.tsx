@@ -1,7 +1,10 @@
 "use client";
 
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import type { Product } from "@/lib/api";
 import { useApp } from "@/lib/store";
+import { formatPrice } from "@/lib/format";
 
 const badges = ["Best Seller", "Hot Deal", "Editor's Pick", "Trending", "New"];
 const badgeColors = [
@@ -13,13 +16,24 @@ const badgeColors = [
 ];
 
 export default function ProductCard({ product, index = 0 }: { product: Product; index?: number }) {
-  const { addToCart, addToWishlist, removeFromWishlist, isInWishlist, openProductModal } = useApp();
+  const { user, addToCart, addToWishlist, removeFromWishlist, isInWishlist, openProductModal, showToast } = useApp();
+  const router = useRouter();
   const wishlisted = isInWishlist(product._id);
   const badgeIdx = index % badges.length;
+  const [added, setAdded] = useState(false);
+  const [adding, setAdding] = useState(false);
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (product.countInStock === 0) return;
+
+    if (!user) {
+      showToast("info", "Please sign in to add items to your cart");
+      router.push("/login");
+      return;
+    }
+
+    setAdding(true);
     addToCart({
       product: product._id,
       name: product.name,
@@ -28,6 +42,10 @@ export default function ProductCard({ product, index = 0 }: { product: Product; 
       quantity: 1,
       countInStock: product.countInStock,
     });
+    setAdding(false);
+    setAdded(true);
+    showToast("success", `${product.name} added to cart`);
+    setTimeout(() => setAdded(false), 2000);
   };
 
   return (
@@ -89,11 +107,11 @@ export default function ProductCard({ product, index = 0 }: { product: Product; 
         {/* Price */}
         <div className="flex items-center gap-2 mb-3">
           <span className="text-base font-bold text-warm-text">
-            ${product.price.toFixed(2)}
+            {formatPrice(product.price)}
           </span>
           {product.rating >= 4.5 && (
             <span className="text-xs text-warm-muted line-through">
-              ${(product.price * 1.2).toFixed(2)}
+              {formatPrice(product.price * 1.2)}
             </span>
           )}
         </div>
@@ -106,10 +124,31 @@ export default function ProductCard({ product, index = 0 }: { product: Product; 
         {/* Add to Cart */}
         <button
           onClick={handleAddToCart}
-          disabled={product.countInStock === 0}
-          className="w-full bg-warm-text text-white text-xs font-medium py-2.5 rounded-lg hover:bg-warm-text/90 transition disabled:bg-warm-border disabled:text-warm-muted disabled:cursor-not-allowed"
+          disabled={product.countInStock === 0 || adding}
+          className={`w-full text-xs font-medium py-2.5 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+            added
+              ? "bg-sage text-white"
+              : product.countInStock === 0
+              ? "bg-warm-border text-warm-muted cursor-not-allowed"
+              : adding
+              ? "bg-warm-text/70 text-white cursor-wait"
+              : "bg-warm-text text-white hover:bg-warm-text/90"
+          }`}
         >
-          {product.countInStock === 0 ? "Out of Stock" : "Add to Cart"}
+          {added ? (
+            <>
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+              </svg>
+              Added!
+            </>
+          ) : product.countInStock === 0 ? (
+            "Out of Stock"
+          ) : adding ? (
+            "Adding..."
+          ) : (
+            "Add to Cart"
+          )}
         </button>
       </div>
     </div>

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { Product } from "@/lib/api";
 import { fakeStoreAPI } from "@/lib/fakestore";
 import { useApp } from "@/lib/store";
+import { formatPrice } from "@/lib/format";
 
 interface ProductModalProps {
   productId: string | null;
@@ -164,11 +165,11 @@ export default function ProductModal({ productId, onClose }: ProductModalProps) 
               {/* Price */}
               <div className="flex items-baseline gap-3 mb-4">
                 <span className="font-[Georgia] text-2xl font-bold text-warm-text">
-                  ${product.price.toFixed(2)}
+                  {formatPrice(product.price)}
                 </span>
                 {product.rating >= 4.5 && (
                   <span className="text-sm text-warm-muted line-through">
-                    ${(product.price * 1.2).toFixed(2)}
+                    {formatPrice(product.price * 1.2)}
                   </span>
                 )}
               </div>

@@ -19,7 +19,7 @@ export interface Notification {
   type: "welcome" | "admin" | "order_delivered" | "order_placed";
   title: string;
   message: string;
-  read: boolean;
+  status: "new" | "viewed" | "past";
   createdAt: string;
 }
 
@@ -29,6 +29,12 @@ export interface AppState {
   wishlist: WishlistItem[];
   avatar: string | null;
   notifications: Notification[];
+}
+
+export interface Toast {
+  id: string;
+  type: "success" | "error" | "info";
+  message: string;
 }
 
 export interface AppContextType extends AppState {
@@ -51,9 +57,13 @@ export interface AppContextType extends AppState {
   profileDrawerOpen: boolean;
   openProfileDrawer: () => void;
   closeProfileDrawer: () => void;
-  addNotification: (notification: Omit<Notification, "id" | "read" | "createdAt">) => void;
-  markNotificationsRead: () => void;
-  unreadCount: number;
+  addNotification: (notification: Omit<Notification, "id" | "status" | "createdAt">) => void;
+  markNotificationsViewed: () => void;
+  deleteNotification: (id: string) => void;
+  newCount: number;
+  toasts: Toast[];
+  showToast: (type: Toast["type"], message: string) => void;
+  removeToast: (id: string) => void;
 }
 
 export const AppContext = createContext<AppContextType | null>(null);
@@ -78,18 +88,20 @@ export function saveCart(cart: CartItem[]) {
   localStorage.setItem("cart", JSON.stringify(cart));
 }
 
-export function loadWishlist(): WishlistItem[] {
+export function loadWishlist(userId?: string): WishlistItem[] {
   if (typeof window === "undefined") return [];
+  const key = userId ? `wishlist_${userId}` : "wishlist";
   try {
-    const data = localStorage.getItem("wishlist");
+    const data = localStorage.getItem(key);
     return data ? JSON.parse(data) : [];
   } catch {
     return [];
   }
 }
 
-export function saveWishlist(wishlist: WishlistItem[]) {
-  localStorage.setItem("wishlist", JSON.stringify(wishlist));
+export function saveWishlist(wishlist: WishlistItem[], userId?: string) {
+  const key = userId ? `wishlist_${userId}` : "wishlist";
+  localStorage.setItem(key, JSON.stringify(wishlist));
 }
 
 export function loadAvatar(userId?: string): string | null {

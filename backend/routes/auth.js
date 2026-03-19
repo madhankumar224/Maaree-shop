@@ -1,6 +1,7 @@
 const express = require("express");
 const jwt = require("jsonwebtoken");
 const { body, validationResult } = require("express-validator");
+const { OAuth2Client } = require("google-auth-library");
 const User = require("../models/User");
 const { auth } = require("../middleware/auth");
 
@@ -8,6 +9,8 @@ const router = express.Router();
 
 const generateToken = (id) =>
   jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: "7d" });
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // POST /api/auth/register
 router.post(
@@ -63,6 +66,50 @@ router.post(
     }
   }
 );
+
+// POST /api/auth/google - Google SSO login
+router.post("/google", async (req, res) => {
+  try {
+    const { credential } = req.body;
+    if (!credential) {
+      return res.status(400).json({ message: "Google credential is required" });
+    }
+
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    const payload = ticket.getPayload();
+    if (!payload || !payload.email) {
+      return res.status(400).json({ message: "Invalid Google token" });
+    }
+
+    const { sub: googleId, email, name } = payload;
+
+    // Find by googleId first, then by email
+    let user = await User.findOne({ googleId });
+    if (!user) {
+      user = await User.findOne({ email });
+      if (user) {
+        // Link existing email account to Google
+        user.googleId = googleId;
+        await user.save();
+      } else {
+        // Create new user from Google profile
+        user = await User.create({
+          name: name || email.split("@")[0],
+          email,
+          googleId,
+        });
+      }
+    }
+
+    const isNewAccount = !user.createdAt || (Date.now() - new Date(user.createdAt).getTime()) < 5000;
+    res.json({ user, token: generateToken(user._id), isNewAccount });
+  } catch (error) {
+    res.status(401).json({ message: "Google authentication failed" });
+  }
+});
 
 // GET /api/auth/me
 router.get("/me", auth, (req, res) => {

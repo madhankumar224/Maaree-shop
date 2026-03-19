@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useApp } from "@/lib/store";
+import { formatPrice } from "@/lib/format";
 
 export default function CartPage() {
   const { cart, removeFromCart, updateCartQuantity, cartTotal } = useApp();
@@ -40,7 +41,7 @@ export default function CartPage() {
                   {item.name}
                 </Link>
                 <p className="text-base font-bold text-warm-text mt-1">
-                  ${item.price.toFixed(2)}
+                  {formatPrice(item.price)}
                 </p>
                 <div className="flex items-center gap-4 mt-2">
                   <div className="flex items-center border border-warm-border rounded-lg overflow-hidden">
@@ -69,7 +70,7 @@ export default function CartPage() {
                 </div>
               </div>
               <div className="text-right font-[Georgia] font-semibold text-warm-text">
-                ${(item.price * item.quantity).toFixed(2)}
+                {formatPrice(item.price * item.quantity)}
               </div>
             </div>
           ))}
@@ -81,14 +82,14 @@ export default function CartPage() {
             {cart.map((item) => (
               <div key={item.product} className="flex justify-between text-xs text-warm-muted">
                 <span className="truncate mr-2">{item.name} x {item.quantity}</span>
-                <span className="font-medium text-warm-text">${(item.price * item.quantity).toFixed(2)}</span>
+                <span className="font-medium text-warm-text">{formatPrice(item.price * item.quantity)}</span>
               </div>
             ))}
           </div>
           <div className="border-t border-warm-border pt-3 mb-2">
             <div className="flex justify-between text-xs text-warm-muted mb-1">
               <span>Subtotal</span>
-              <span>${cartTotal.toFixed(2)}</span>
+              <span>{formatPrice(cartTotal)}</span>
             </div>
             <div className="flex justify-between text-xs text-warm-muted mb-3">
               <span>Shipping</span>
@@ -98,7 +99,7 @@ export default function CartPage() {
           <div className="border-t border-warm-border pt-3 mb-6">
             <div className="flex justify-between font-[Georgia] font-bold text-lg text-warm-text">
               <span>Total</span>
-              <span>${cartTotal.toFixed(2)}</span>
+              <span>{formatPrice(cartTotal)}</span>
             </div>
           </div>
           <Link

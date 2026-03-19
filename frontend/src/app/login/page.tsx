@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { authAPI } from "@/lib/api";
 import { useApp } from "@/lib/store";
@@ -15,6 +15,15 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(false);
+
+  // Restore remembered email on mount
+  useEffect(() => {
+    const saved = localStorage.getItem("rememberedEmail");
+    if (saved) {
+      setEmail(saved);
+      setRemember(true);
+    }
+  }, []);
 
   // Register state
   const [regName, setRegName] = useState("");
@@ -33,6 +42,11 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const data = await authAPI.login(email, password);
+      if (remember) {
+        localStorage.setItem("rememberedEmail", email);
+      } else {
+        localStorage.removeItem("rememberedEmail");
+      }
       login(data.user, data.token);
       router.push("/");
     } catch (err) {
@@ -87,8 +101,6 @@ export default function LoginPage() {
     setError("");
     setRegisterSuccess(false);
   };
-
-
 
   return (
     <div className="min-h-screen flex">
@@ -188,12 +200,6 @@ export default function LoginPage() {
                 </button>
               </p>
 
-              <div className="flex items-center gap-4 mb-7">
-                <div className="flex-1 border-t border-dashed border-warm-border" />
-                <span className="text-xs text-warm-muted">or sign in with email</span>
-                <div className="flex-1 border-t border-dashed border-warm-border" />
-              </div>
-
               {error && (
                 <div className="bg-blush/10 text-blush px-4 py-3 rounded-lg text-sm mb-5">{error}</div>
               )}
@@ -253,20 +259,15 @@ export default function LoginPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={remember}
-                      onChange={(e) => setRemember(e.target.checked)}
-                      className="w-4 h-4 rounded border-warm-border text-terracotta focus:ring-terracotta/30"
-                    />
-                    <span className="text-sm text-warm-muted">Remember me</span>
-                  </label>
-                  <button type="button" className="text-sm text-terracotta hover:text-terracotta-dark font-medium">
-                    Forgot password?
-                  </button>
-                </div>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={remember}
+                    onChange={(e) => setRemember(e.target.checked)}
+                    className="w-4 h-4 rounded border-warm-border text-terracotta focus:ring-terracotta/30"
+                  />
+                  <span className="text-sm text-warm-muted">Remember me</span>
+                </label>
 
                 <button
                   type="submit"

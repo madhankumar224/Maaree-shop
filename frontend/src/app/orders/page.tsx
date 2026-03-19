@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ordersAPI, type Order } from "@/lib/api";
 import { useApp } from "@/lib/store";
+import { formatPrice } from "@/lib/format";
 
 const statusColors: Record<string, string> = {
   pending: "bg-gold/10 text-gold",
@@ -62,7 +63,7 @@ export default function OrdersPage() {
                 <div>
                   <p className="text-xs text-warm-muted font-mono">#{order._id.slice(-8)}</p>
                   <p className="font-[Georgia] font-semibold text-warm-text mt-1">
-                    ${order.totalPrice.toFixed(2)} &middot; {order.items.length} item{order.items.length !== 1 ? "s" : ""}
+                    {formatPrice(order.totalPrice)} &middot; {order.items.length} item{order.items.length !== 1 ? "s" : ""}
                   </p>
                   <p className="text-[10px] text-warm-muted mt-1 uppercase tracking-wider">
                     {new Date(order.createdAt).toLocaleDateString("en-US", {

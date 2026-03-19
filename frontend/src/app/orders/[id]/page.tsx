@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ordersAPI, type Order } from "@/lib/api";
 import { useApp } from "@/lib/store";
+import { formatPrice } from "@/lib/format";
 
 const trackingSteps = [
   {
@@ -180,15 +181,15 @@ export default function OrderDetailPage() {
                 <img src={item.image} alt={item.name} className="w-14 h-14 object-cover rounded-xl border border-warm-border" />
                 <div className="flex-1">
                   <p className="text-sm font-medium text-warm-text">{item.name}</p>
-                  <p className="text-xs text-warm-muted">Qty: {item.quantity} x ${item.price.toFixed(2)}</p>
+                  <p className="text-xs text-warm-muted">Qty: {item.quantity} x {formatPrice(item.price)}</p>
                 </div>
-                <span className="font-semibold text-sm text-warm-text">${(item.price * item.quantity).toFixed(2)}</span>
+                <span className="font-semibold text-sm text-warm-text">{formatPrice(item.price * item.quantity)}</span>
               </div>
             ))}
           </div>
           <div className="border-t border-warm-border mt-4 pt-4 flex justify-between font-[Georgia] font-bold text-lg text-warm-text">
             <span>Total</span>
-            <span>${order.totalPrice.toFixed(2)}</span>
+            <span>{formatPrice(order.totalPrice)}</span>
           </div>
         </div>
 

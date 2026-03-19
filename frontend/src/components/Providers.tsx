@@ -2,12 +2,40 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { AppContext, loadCart, saveCart, loadWishlist, saveWishlist, loadAvatar, saveAvatar, loadNotifications, saveNotifications } from "@/lib/store";
-import type { WishlistItem, Notification } from "@/lib/store";
+import type { WishlistItem, Notification, Toast } from "@/lib/store";
 import type { User, CartItem, Product } from "@/lib/api";
-import { authAPI } from "@/lib/api";
+import { authAPI, wishlistAPI } from "@/lib/api";
 import ProductModal from "./ProductModal";
 import ProfileDrawer from "./ProfileDrawer";
 import ChatBot from "./ChatBot";
+import ToastContainer from "./Toast";
+
+// Convert between frontend WishlistItem and backend WishlistItemData
+function toBackendItem(item: WishlistItem) {
+  return {
+    productId: item._id,
+    name: item.name,
+    price: item.price,
+    image: item.image,
+    category: item.category,
+    rating: item.rating,
+    numReviews: item.numReviews,
+    countInStock: item.countInStock,
+  };
+}
+
+function fromBackendItems(items: { productId: string; name: string; price: number; image: string; category: string; rating: number; numReviews: number; countInStock: number }[]): WishlistItem[] {
+  return items.map((i) => ({
+    _id: i.productId,
+    name: i.name,
+    price: i.price,
+    image: i.image,
+    category: i.category,
+    rating: i.rating,
+    numReviews: i.numReviews,
+    countInStock: i.countInStock,
+  }));
+}
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -18,28 +46,42 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [profileDrawerOpen, setProfileDrawerOpen] = useState(false);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+
+  // Fetch wishlist from API for authenticated users
+  const fetchWishlist = useCallback(async (userId: string) => {
+    try {
+      const items = await wishlistAPI.get();
+      const mapped = fromBackendItems(items);
+      setWishlist(mapped);
+      saveWishlist(mapped, userId);
+    } catch {
+      // Fallback to local cache
+      setWishlist(loadWishlist(userId));
+    }
+  }, []);
 
   useEffect(() => {
     setCart(loadCart());
-    setWishlist(loadWishlist());
     const token = localStorage.getItem("token");
     if (token) {
       authAPI.getMe().then((u) => {
         setUser(u);
         setAvatarState(loadAvatar(u._id));
         setNotifications(loadNotifications(u._id));
+        fetchWishlist(u._id);
       }).catch(() => localStorage.removeItem("token"));
     }
     setMounted(true);
-  }, []);
+  }, [fetchWishlist]);
 
   useEffect(() => {
     if (mounted) saveCart(cart);
   }, [cart, mounted]);
 
   useEffect(() => {
-    if (mounted) saveWishlist(wishlist);
-  }, [wishlist, mounted]);
+    if (mounted && user) saveWishlist(wishlist, user._id);
+  }, [wishlist, mounted, user]);
 
   useEffect(() => {
     if (mounted && user) saveAvatar(avatar, user._id);
@@ -60,20 +102,23 @@ export default function Providers({ children }: { children: React.ReactNode }) {
         type: "welcome",
         title: "Welcome to MAAREE!",
         message: `Hi ${u.name}, welcome to MAAREE! Start exploring our curated collection of products.`,
-        read: false,
+        status: "new",
         createdAt: new Date().toISOString(),
       };
       setNotifications([welcomeNotif, ...existingNotifs]);
     } else {
       setNotifications(existingNotifs);
     }
-  }, []);
+    // Fetch user's wishlist from server
+    fetchWishlist(u._id);
+  }, [fetchWishlist]);
 
   const logout = useCallback(() => {
     localStorage.removeItem("token");
     setUser(null);
     setAvatarState(null);
     setNotifications([]);
+    setWishlist([]);
   }, []);
 
   const addToCart = useCallback((item: CartItem) => {
@@ -103,23 +148,35 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   const clearCart = useCallback(() => setCart([]), []);
 
   const addToWishlist = useCallback((product: Product) => {
+    const item: WishlistItem = {
+      _id: product._id,
+      name: product.name,
+      price: product.price,
+      image: product.image,
+      category: product.category,
+      rating: product.rating,
+      numReviews: product.numReviews,
+      countInStock: product.countInStock,
+    };
+
     setWishlist((prev) => {
       if (prev.some((i) => i._id === product._id)) return prev;
-      return [...prev, {
-        _id: product._id,
-        name: product.name,
-        price: product.price,
-        image: product.image,
-        category: product.category,
-        rating: product.rating,
-        numReviews: product.numReviews,
-        countInStock: product.countInStock,
-      }];
+      return [...prev, item];
     });
+
+    // Sync to backend if logged in
+    if (localStorage.getItem("token")) {
+      wishlistAPI.add(toBackendItem(item)).catch(() => {});
+    }
   }, []);
 
   const removeFromWishlist = useCallback((productId: string) => {
     setWishlist((prev) => prev.filter((i) => i._id !== productId));
+
+    // Sync to backend if logged in
+    if (localStorage.getItem("token")) {
+      wishlistAPI.remove(productId).catch(() => {});
+    }
   }, []);
 
   const isInWishlist = useCallback((productId: string) => {
@@ -130,22 +187,31 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     setAvatarState(url);
   }, []);
 
-  const addNotification = useCallback((notif: Omit<Notification, "id" | "read" | "createdAt">) => {
+  const addNotification = useCallback((notif: Omit<Notification, "id" | "status" | "createdAt">) => {
     const newNotif: Notification = {
       ...notif,
       id: `${notif.type}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-      read: false,
+      status: "new",
       createdAt: new Date().toISOString(),
     };
     setNotifications((prev) => [newNotif, ...prev]);
   }, []);
 
-  const markNotificationsRead = useCallback(() => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  const markNotificationsViewed = useCallback(() => {
+    setNotifications((prev) =>
+      prev.map((n) => ({
+        ...n,
+        status: n.status === "new" ? "viewed" : n.status === "viewed" ? "past" : n.status,
+      }))
+    );
   }, []);
 
-  const unreadCount = useMemo(
-    () => notifications.filter((n) => !n.read).length,
+  const deleteNotification = useCallback((id: string) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+  }, []);
+
+  const newCount = useMemo(
+    () => notifications.filter((n) => n.status === "new").length,
     [notifications]
   );
 
@@ -159,6 +225,15 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 
   const openProfileDrawer = useCallback(() => setProfileDrawerOpen(true), []);
   const closeProfileDrawer = useCallback(() => setProfileDrawerOpen(false), []);
+
+  const showToast = useCallback((type: Toast["type"], message: string) => {
+    const id = `toast_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    setToasts((prev) => [...prev, { id, type, message }]);
+  }, []);
+
+  const removeToast = useCallback((id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
 
   const cartTotal = useMemo(
     () => cart.reduce((sum, i) => sum + i.price * i.quantity, 0),
@@ -177,9 +252,10 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       setUser: setUser as (u: User) => void,
       selectedProductId, openProductModal, closeProductModal,
       profileDrawerOpen, openProfileDrawer, closeProfileDrawer,
-      addNotification, markNotificationsRead, unreadCount,
+      addNotification, markNotificationsViewed, deleteNotification, newCount,
+      toasts, showToast, removeToast,
     }),
-    [user, cart, wishlist, avatar, notifications, login, logout, addToCart, removeFromCart, updateCartQuantity, clearCart, cartTotal, cartCount, addToWishlist, removeFromWishlist, isInWishlist, setAvatar, selectedProductId, openProductModal, closeProductModal, profileDrawerOpen, openProfileDrawer, closeProfileDrawer, addNotification, markNotificationsRead, unreadCount]
+    [user, cart, wishlist, avatar, notifications, login, logout, addToCart, removeFromCart, updateCartQuantity, clearCart, cartTotal, cartCount, addToWishlist, removeFromWishlist, isInWishlist, setAvatar, selectedProductId, openProductModal, closeProductModal, profileDrawerOpen, openProfileDrawer, closeProfileDrawer, addNotification, markNotificationsViewed, deleteNotification, newCount, toasts, showToast, removeToast]
   );
 
   return (
@@ -188,6 +264,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       <ProductModal productId={selectedProductId} onClose={closeProductModal} />
       <ProfileDrawer />
       <ChatBot />
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
     </AppContext.Provider>
   );
 }

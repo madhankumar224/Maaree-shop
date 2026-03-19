@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { usePathname } from "next/navigation";
 import { chatbotAPI } from "@/lib/api";
 import { fakeStoreAPI } from "@/lib/fakestore";
 import { useApp } from "@/lib/store";
 import type { Product } from "@/lib/api";
+import { formatPrice } from "@/lib/format";
 
 interface Message {
   id: string;
@@ -34,9 +36,12 @@ const FAQ: Record<string, string> = {
     "You can reach us at support@maaree.com or call 1-800-MAAREE (1-800-622-733). Our support team is available Mon-Fri, 9 AM - 6 PM EST.",
 };
 
-const SUGGESTIONS = ["Top Deals", "New Arrivals", "Track Order", "Contact Support"];
+const SUGGESTIONS = ["Top Deals", "New Arrivals", "Track Order", "About MAAREE"];
+
+const authPages = ["/login", "/register"];
 
 export default function ChatBot() {
+  const pathname = usePathname();
   const { addToCart, openProductModal } = useApp();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -77,6 +82,17 @@ export default function ChatBot() {
   const parseIntent = (text: string) => {
     const lower = text.toLowerCase().trim();
 
+    // Greeting — check first before anything else
+    if (lower.match(/^(hi|hello|hey|good morning|good evening|good afternoon|howdy|sup|yo)[\s!.?]*$/))
+      return { type: "greeting" as const };
+
+    if (lower.match(/^(thank|thanks|thx|thank you)/))
+      return { type: "thanks" as const };
+
+    // About the app
+    if (lower.match(/what is (this|maaree)|about (this|maaree|the app|your app|this app|the store)|tell me about|who are you|what (can|do) you do|what is this (app|site|website)|^about maaree$/))
+      return { type: "about" as const };
+
     // Order tracking
     const orderMatch = lower.match(/(?:track|order|status)\s*(?:#?\s*)([a-f0-9]{4,24})/i);
     if (orderMatch) return { type: "track" as const, orderId: orderMatch[1] };
@@ -108,7 +124,6 @@ export default function ChatBot() {
     // Product search (default)
     const searchParams: { q?: string; minPrice?: string; maxPrice?: string; category?: string } = {};
 
-    // Extract price constraints
     if (priceUnder) {
       searchParams.maxPrice = priceUnder[1];
     } else if (priceRange) {
@@ -116,7 +131,6 @@ export default function ChatBot() {
       searchParams.maxPrice = priceRange[2];
     }
 
-    // Clean search query - remove price parts and common filler words
     let query = lower
       .replace(/under\s*\$?\s*\d+/g, "")
       .replace(/\d+\s*(?:to|-)\s*\$?\s*\d+/g, "")
@@ -130,13 +144,6 @@ export default function ChatBot() {
     if (searchParams.q || searchParams.minPrice || searchParams.maxPrice) {
       return { type: "search" as const, params: searchParams };
     }
-
-    // Greeting
-    if (lower.match(/^(hi|hello|hey|good morning|good evening|howdy|sup)/))
-      return { type: "greeting" as const };
-
-    if (lower.match(/^(thank|thanks|thx)/))
-      return { type: "thanks" as const };
 
     return { type: "unknown" as const };
   };
@@ -268,8 +275,17 @@ export default function ChatBot() {
         case "greeting": {
           addMessage({
             role: "bot",
-            text: "Hello! I'm here to help you shop. You can ask me to find products, track orders, or answer questions about shipping and returns.",
+            text: "Hey there! Welcome to MAAREE. I'm your shopping assistant. Here's what I can help you with:\n\n- Search for products (e.g. \"show me headphones\")\n- Find deals and new arrivals\n- Track your orders\n- Answer questions about shipping, returns & payments\n\nWhat would you like to do?",
             suggestions: SUGGESTIONS,
+          });
+          break;
+        }
+
+        case "about": {
+          addMessage({
+            role: "bot",
+            text: "MAAREE is a modern e-commerce platform where you can browse and shop from a curated collection of products across categories like Electronics, Clothing, Accessories, and more.\n\nKey features:\n- Browse & search products\n- Add items to cart & wishlist\n- Secure checkout with order tracking\n- Personalized recommendations\n\nI'm your AI shopping assistant — ask me anything about products, orders, or store policies!",
+            suggestions: ["Browse Products", "Top Deals", "Track Order", "Contact Support"],
           });
           break;
         }
@@ -277,7 +293,7 @@ export default function ChatBot() {
         case "thanks": {
           addMessage({
             role: "bot",
-            text: "You're welcome! Let me know if there's anything else I can help with.",
+            text: "You're welcome! Happy to help. Let me know if you need anything else.",
             suggestions: SUGGESTIONS,
           });
           break;
@@ -286,8 +302,8 @@ export default function ChatBot() {
         default: {
           addMessage({
             role: "bot",
-            text: "Sorry, I didn't understand that. Can you rephrase your question? You can ask me to search for products, track orders, or answer FAQs.",
-            suggestions: SUGGESTIONS,
+            text: "I'm not sure I understood that. Here are some things I can help with:",
+            suggestions: ["Search Products", "Top Deals", "Track Order", "About MAAREE"],
           });
         }
       }
@@ -334,6 +350,8 @@ export default function ChatBot() {
     delivered: "bg-green-100 text-green-800",
     cancelled: "bg-red-100 text-red-800",
   };
+
+  if (authPages.includes(pathname)) return null;
 
   return (
     <>
@@ -429,7 +447,7 @@ export default function ChatBot() {
                               <span className="text-[10px] text-warm-muted">{product.rating}</span>
                             </div>
                             <div className="flex items-center justify-between mt-1.5">
-                              <span className="text-[13px] font-bold text-terracotta">${product.price.toFixed(2)}</span>
+                              <span className="text-[13px] font-bold text-terracotta">{formatPrice(product.price)}</span>
                               <button
                                 onClick={() => handleAddToCart(product)}
                                 className="text-[10px] bg-terracotta text-white px-2.5 py-1 rounded-full hover:bg-terracotta/90 transition font-medium"
@@ -464,13 +482,13 @@ export default function ChatBot() {
                             <span className="text-warm-text truncate mr-2">
                               {item.name} x{item.quantity}
                             </span>
-                            <span className="text-warm-muted shrink-0">${(item.price * item.quantity).toFixed(2)}</span>
+                            <span className="text-warm-muted shrink-0">{formatPrice(item.price * item.quantity)}</span>
                           </div>
                         ))}
                       </div>
                       <div className="border-t border-warm-border/50 mt-2 pt-2 flex justify-between">
                         <span className="text-[12px] font-semibold text-warm-text">Total</span>
-                        <span className="text-[12px] font-bold text-terracotta">${msg.order.totalPrice.toFixed(2)}</span>
+                        <span className="text-[12px] font-bold text-terracotta">{formatPrice(msg.order.totalPrice)}</span>
                       </div>
                       <p className="text-[10px] text-warm-muted mt-1.5">
                         Ordered on {new Date(msg.order.createdAt).toLocaleDateString("en-US", {

@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { fakeStoreAPI } from "@/lib/fakestore";
 import { useApp } from "@/lib/store";
 import type { Product } from "@/lib/api";
+import { formatPrice } from "@/lib/format";
 
 interface SearchSuggestionsProps {
   query: string;
@@ -127,7 +128,7 @@ export default function SearchSuggestions({ query, isOpen, onClose, onSelect, on
                 <p className="text-sm text-warm-text truncate group-hover:text-terracotta transition">
                   {product.name}
                 </p>
-                <p className="text-[11px] text-warm-muted">{product.category} &middot; ${product.price.toFixed(2)}</p>
+                <p className="text-[11px] text-warm-muted">{product.category} &middot; {formatPrice(product.price)}</p>
               </div>
               <svg className="w-4 h-4 text-warm-border group-hover:text-warm-muted transition shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />

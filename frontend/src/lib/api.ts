@@ -36,6 +36,11 @@ export const authAPI = {
       method: "POST",
       body: JSON.stringify({ name, email, password }),
     }),
+  googleLogin: (credential: string) =>
+    request<{ user: User; token: string; isNewAccount: boolean }>("/auth/google", {
+      method: "POST",
+      body: JSON.stringify({ credential }),
+    }),
   getMe: () => request<User>("/auth/me"),
   updateMe: (data: { name?: string }) =>
     request<User>("/auth/me", {
@@ -102,6 +107,29 @@ export const ordersAPI = {
       body: JSON.stringify({ status }),
     }),
 };
+
+// Wishlist
+export const wishlistAPI = {
+  get: () => request<WishlistItemData[]>("/wishlist"),
+  add: (item: WishlistItemData) =>
+    request<WishlistItemData[]>("/wishlist", {
+      method: "POST",
+      body: JSON.stringify(item),
+    }),
+  remove: (productId: string) =>
+    request<WishlistItemData[]>(`/wishlist/${productId}`, { method: "DELETE" }),
+};
+
+export interface WishlistItemData {
+  productId: string;
+  name: string;
+  price: number;
+  image: string;
+  category: string;
+  rating: number;
+  numReviews: number;
+  countInStock: number;
+}
 
 // Chatbot
 export const chatbotAPI = {

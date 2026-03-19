@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { useApp } from "@/lib/store";
 import { ordersAPI, authAPI, type Order } from "@/lib/api";
+import { formatPrice } from "@/lib/format";
 
 export default function ProfileDrawer() {
   const { user, wishlist, avatar, setAvatar, setUser, profileDrawerOpen, closeProfileDrawer } = useApp();
@@ -275,7 +276,7 @@ export default function ProfileDrawer() {
                 <p className="text-[10px] text-warm-muted uppercase tracking-wider font-medium mt-0.5">Wishlist</p>
               </div>
               <div className="bg-warm-bg/60 rounded-xl p-4 text-center">
-                <p className="font-[Georgia] text-xl font-bold text-warm-text">${loading ? "-" : totalSpent.toFixed(0)}</p>
+                <p className="font-[Georgia] text-xl font-bold text-warm-text">{loading ? "-" : formatPrice(totalSpent)}</p>
                 <p className="text-[10px] text-warm-muted uppercase tracking-wider font-medium mt-0.5">Spent</p>
               </div>
             </div>
@@ -330,7 +331,7 @@ export default function ProfileDrawer() {
                       <div>
                         <p className="text-[10px] text-warm-muted font-mono">#{order._id.slice(-8)}</p>
                         <p className="text-xs font-medium text-warm-text mt-0.5">
-                          ${order.totalPrice.toFixed(2)} &middot; {order.items.length} item{order.items.length !== 1 ? "s" : ""}
+                          {formatPrice(order.totalPrice)} &middot; {order.items.length} item{order.items.length !== 1 ? "s" : ""}
                         </p>
                       </div>
                       <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider capitalize ${

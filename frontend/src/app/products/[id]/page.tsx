@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { type Product } from "@/lib/api";
 import { fakeStoreAPI } from "@/lib/fakestore";
 import { useApp } from "@/lib/store";
+import { formatPrice } from "@/lib/format";
 
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -99,11 +100,11 @@ export default function ProductDetailPage() {
 
           <div className="flex items-baseline gap-3 mb-6">
             <span className="font-[Georgia] text-3xl font-bold text-warm-text">
-              ${product.price.toFixed(2)}
+              {formatPrice(product.price)}
             </span>
             {product.rating >= 4.5 && (
               <span className="text-sm text-warm-muted line-through">
-                ${(product.price * 1.2).toFixed(2)}
+                {formatPrice(product.price * 1.2)}
               </span>
             )}
           </div>

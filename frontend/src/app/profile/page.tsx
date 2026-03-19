@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useApp } from "@/lib/store";
 import { ordersAPI, type Order } from "@/lib/api";
+import { formatPrice } from "@/lib/format";
 
 export default function ProfilePage() {
   const { user, wishlist, avatar, setAvatar } = useApp();
@@ -123,7 +124,7 @@ export default function ProfilePage() {
           <p className="text-[10px] text-warm-muted uppercase tracking-wider font-medium mt-1">Wishlist</p>
         </div>
         <div className="bg-white rounded-2xl border border-warm-border p-5 text-center">
-          <p className="font-[Georgia] text-2xl font-bold text-warm-text">${totalSpent.toFixed(0)}</p>
+          <p className="font-[Georgia] text-2xl font-bold text-warm-text">{formatPrice(totalSpent)}</p>
           <p className="text-[10px] text-warm-muted uppercase tracking-wider font-medium mt-1">Total Spent</p>
         </div>
       </div>
@@ -178,7 +179,7 @@ export default function ProfilePage() {
                 <div>
                   <p className="text-xs text-warm-muted font-mono">#{order._id.slice(-8)}</p>
                   <p className="text-sm font-medium text-warm-text mt-0.5">
-                    ${order.totalPrice.toFixed(2)} &middot; {order.items.length} item{order.items.length !== 1 ? "s" : ""}
+                    {formatPrice(order.totalPrice)} &middot; {order.items.length} item{order.items.length !== 1 ? "s" : ""}
                   </p>
                 </div>
                 <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider capitalize ${

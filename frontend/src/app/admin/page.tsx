@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/lib/store";
 import { productsAPI, ordersAPI, authAPI, type Product, type Order, type User } from "@/lib/api";
+import { formatPrice } from "@/lib/format";
 
 type Tab = "orders" | "products" | "add-product" | "users";
 
@@ -195,7 +196,7 @@ export default function AdminPage() {
   const statCards = [
     { label: "Total Orders", value: orders.length, color: "from-terracotta/10 to-terracotta/5" },
     { label: "Pending", value: pendingOrders, color: "from-gold/10 to-gold/5" },
-    { label: "Revenue", value: `$${totalRevenue.toFixed(2)}`, color: "from-sage/10 to-sage/5" },
+    { label: "Revenue", value: formatPrice(totalRevenue), color: "from-sage/10 to-sage/5" },
     { label: "Users", value: users.length, color: "from-blush/10 to-blush/5" },
   ];
 
@@ -248,7 +249,7 @@ export default function AdminPage() {
                   <tr key={order._id} className="hover:bg-warm-bg/50 transition">
                     <td className="px-5 py-3 font-mono text-xs text-warm-muted">#{order._id.slice(-8)}</td>
                     <td className="px-5 py-3 text-warm-text font-medium">{order.user?.name || "N/A"}</td>
-                    <td className="px-5 py-3 font-[Georgia] font-semibold text-warm-text">${order.totalPrice.toFixed(2)}</td>
+                    <td className="px-5 py-3 font-[Georgia] font-semibold text-warm-text">{formatPrice(order.totalPrice)}</td>
                     <td className="px-5 py-3 text-warm-muted text-xs">{new Date(order.createdAt).toLocaleDateString()}</td>
                     <td className="px-5 py-3">
                       <select
@@ -296,7 +297,7 @@ export default function AdminPage() {
                       </div>
                     </td>
                     <td className="px-5 py-3 text-warm-muted">{product.category}</td>
-                    <td className="px-5 py-3 font-[Georgia] font-semibold text-warm-text">${product.price.toFixed(2)}</td>
+                    <td className="px-5 py-3 font-[Georgia] font-semibold text-warm-text">{formatPrice(product.price)}</td>
                     <td className="px-5 py-3">
                       <span className={`text-xs font-medium ${product.countInStock > 0 ? "text-sage" : "text-blush"}`}>
                         {product.countInStock}
