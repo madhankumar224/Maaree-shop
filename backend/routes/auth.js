@@ -4,6 +4,7 @@ const { body, validationResult } = require("express-validator");
 const { OAuth2Client } = require("google-auth-library");
 const User = require("../models/User");
 const { auth } = require("../middleware/auth");
+const { sendLoginAlert, sendWelcomeSMS } = require("../services/sms");
 
 const router = express.Router();
 
@@ -55,9 +56,16 @@ router.post(
 
     try {
       const { email, password } = req.body;
-      const user = await User.findOne({ email });
+      const user = await User.findOne({ email }).select("+phone +smsNotifications");
       if (!user || !(await user.comparePassword(password))) {
         return res.status(401).json({ message: "Invalid credentials" });
+      }
+
+      // Send login alert SMS (non-blocking, only if user opted in)
+      if (user.phone && user.smsNotifications) {
+        sendLoginAlert(user.phone, user.name).catch((err) =>
+          console.error("[SMS] Login alert failed:", err.message)
+        );
       }
 
       res.json({ user, token: generateToken(user._id) });
@@ -244,5 +252,34 @@ router.post(
     }
   }
 );
+
+// PUT /api/auth/me/notifications - Toggle SMS notification preference
+router.put("/me/notifications", auth, async (req, res) => {
+  try {
+    const { smsNotifications } = req.body;
+    const user = await User.findById(req.user._id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+    user.smsNotifications = !!smsNotifications;
+    await user.save();
+    res.json({ smsNotifications: user.smsNotifications });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// GET /api/auth/me/notifications - Get notification preferences
+router.get("/me/notifications", auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).select("smsNotifications phone");
+    if (!user) return res.status(404).json({ message: "User not found" });
+    // Mask phone: show last 4 digits only
+    const maskedPhone = user.phone
+      ? "****" + user.phone.slice(-4)
+      : null;
+    res.json({ smsNotifications: user.smsNotifications, phone: maskedPhone });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
 
 module.exports = router;

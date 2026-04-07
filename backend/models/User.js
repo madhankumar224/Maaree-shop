@@ -5,9 +5,11 @@ const userSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
     email: { type: String, required: true, unique: true, lowercase: true },
+    phone: { type: String, trim: true, default: "" },
     password: { type: String, minlength: 6 },
     googleId: { type: String, unique: true, sparse: true },
     isAdmin: { type: Boolean, default: false },
+    smsNotifications: { type: Boolean, default: true },
   },
   { timestamps: true }
 );
@@ -26,6 +28,7 @@ userSchema.methods.comparePassword = async function (candidatePassword) {
 userSchema.methods.toJSON = function () {
   const obj = this.toObject();
   delete obj.password;
+  delete obj.phone;
   return obj;
 };
 
