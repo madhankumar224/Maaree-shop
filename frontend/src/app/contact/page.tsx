@@ -1,15 +1,26 @@
 "use client";
 
 import { useState } from "react";
+import { contactAPI } from "@/lib/api";
 
 export default function ContactPage() {
   const [form, setForm] = useState({ name: "", email: "", subject: "", message: "" });
-  const [submitted, setSubmitted] = useState(false);
+  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [errorMsg, setErrorMsg] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
-    setForm({ name: "", email: "", subject: "", message: "" });
+    setStatus("sending");
+    setErrorMsg("");
+
+    try {
+      await contactAPI.send(form);
+      setStatus("sent");
+      setForm({ name: "", email: "", subject: "", message: "" });
+    } catch (err) {
+      setStatus("error");
+      setErrorMsg(err instanceof Error ? err.message : "Failed to send message");
+    }
   };
 
   return (
@@ -98,20 +109,61 @@ export default function ContactPage() {
 
           {/* Contact form */}
           <div className="lg:col-span-3">
-            {submitted ? (
+            {status === "sent" ? (
               <div className="bg-white rounded-2xl border border-warm-border p-12 text-center">
-                <div className="w-16 h-16 rounded-full bg-sage/10 text-sage flex items-center justify-center mx-auto mb-5">
-                  <svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                  </svg>
+                {/* Animated success */}
+                <div className="relative w-20 h-20 mx-auto mb-6">
+                  {/* Expanding rings */}
+                  <div className="absolute inset-0 rounded-full bg-sage/10 animate-[ping_1.5s_ease-out_1]" />
+                  <div className="absolute inset-2 rounded-full bg-sage/15 animate-[ping_1.5s_ease-out_0.3s_1]" />
+                  {/* Main circle */}
+                  <div className="relative w-20 h-20 rounded-full bg-sage/10 text-sage flex items-center justify-center animate-[bounceIn_0.6s_ease-out]">
+                    <svg className="w-10 h-10" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M4.5 12.75l6 6 9-13.5"
+                        className="animate-[drawCheck_0.5s_ease-out_0.3s_both]"
+                        style={{
+                          strokeDasharray: 30,
+                          strokeDashoffset: 30,
+                          animation: "drawCheck 0.5s ease-out 0.3s forwards",
+                        }}
+                      />
+                    </svg>
+                  </div>
                 </div>
-                <h3 className="font-[Georgia] text-2xl font-bold text-warm-text mb-2">Message Sent!</h3>
-                <p className="text-sm text-warm-muted mb-6">
+
+                {/* Animated paper plane */}
+                <div className="relative h-8 mb-4 overflow-hidden">
+                  <div
+                    className="absolute left-1/2 -translate-x-1/2"
+                    style={{
+                      animation: "flyAway 1s ease-in-out 0.5s both",
+                    }}
+                  >
+                    <svg className="w-6 h-6 text-terracotta" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+                    </svg>
+                  </div>
+                </div>
+
+                <h3
+                  className="font-[Georgia] text-2xl font-bold text-warm-text mb-2"
+                  style={{ animation: "fadeSlideUp 0.5s ease-out 0.4s both" }}
+                >
+                  Email Sent Successfully!
+                </h3>
+                <p
+                  className="text-sm text-warm-muted mb-6"
+                  style={{ animation: "fadeSlideUp 0.5s ease-out 0.6s both" }}
+                >
                   Thank you for reaching out. We will get back to you within 24 hours.
                 </p>
                 <button
-                  onClick={() => setSubmitted(false)}
+                  onClick={() => setStatus("idle")}
                   className="text-sm text-terracotta hover:text-terracotta-dark font-medium transition"
+                  style={{ animation: "fadeSlideUp 0.5s ease-out 0.8s both" }}
                 >
                   Send another message
                 </button>
@@ -120,6 +172,12 @@ export default function ContactPage() {
               <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-warm-border p-8 space-y-5">
                 <h3 className="font-[Georgia] text-lg font-bold text-warm-text mb-1">Send a Message</h3>
                 <p className="text-xs text-warm-muted mb-4">Fill out the form below and we will respond promptly.</p>
+
+                {status === "error" && (
+                  <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-600">
+                    {errorMsg}
+                  </div>
+                )}
 
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div>
@@ -130,7 +188,8 @@ export default function ContactPage() {
                       value={form.name}
                       onChange={(e) => setForm({ ...form, name: e.target.value })}
                       placeholder="Your name"
-                      className="w-full bg-warm-bg/70 border border-warm-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/20 focus:border-terracotta/40 focus:bg-white placeholder-warm-muted/60 transition"
+                      disabled={status === "sending"}
+                      className="w-full bg-warm-bg/70 border border-warm-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/20 focus:border-terracotta/40 focus:bg-white placeholder-warm-muted/60 transition disabled:opacity-50"
                     />
                   </div>
                   <div>
@@ -141,7 +200,8 @@ export default function ContactPage() {
                       value={form.email}
                       onChange={(e) => setForm({ ...form, email: e.target.value })}
                       placeholder="you@example.com"
-                      className="w-full bg-warm-bg/70 border border-warm-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/20 focus:border-terracotta/40 focus:bg-white placeholder-warm-muted/60 transition"
+                      disabled={status === "sending"}
+                      className="w-full bg-warm-bg/70 border border-warm-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/20 focus:border-terracotta/40 focus:bg-white placeholder-warm-muted/60 transition disabled:opacity-50"
                     />
                   </div>
                 </div>
@@ -154,7 +214,8 @@ export default function ContactPage() {
                     value={form.subject}
                     onChange={(e) => setForm({ ...form, subject: e.target.value })}
                     placeholder="How can we help?"
-                    className="w-full bg-warm-bg/70 border border-warm-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/20 focus:border-terracotta/40 focus:bg-white placeholder-warm-muted/60 transition"
+                    disabled={status === "sending"}
+                    className="w-full bg-warm-bg/70 border border-warm-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/20 focus:border-terracotta/40 focus:bg-white placeholder-warm-muted/60 transition disabled:opacity-50"
                   />
                 </div>
 
@@ -166,24 +227,61 @@ export default function ContactPage() {
                     value={form.message}
                     onChange={(e) => setForm({ ...form, message: e.target.value })}
                     placeholder="Tell us more..."
-                    className="w-full bg-warm-bg/70 border border-warm-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/20 focus:border-terracotta/40 focus:bg-white placeholder-warm-muted/60 transition resize-none"
+                    disabled={status === "sending"}
+                    className="w-full bg-warm-bg/70 border border-warm-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/20 focus:border-terracotta/40 focus:bg-white placeholder-warm-muted/60 transition resize-none disabled:opacity-50"
                   />
                 </div>
 
                 <button
                   type="submit"
-                  className="w-full bg-warm-text text-white py-3.5 rounded-xl font-semibold text-sm uppercase tracking-wider hover:bg-warm-text/90 transition flex items-center justify-center gap-2"
+                  disabled={status === "sending"}
+                  className="w-full bg-warm-text text-white py-3.5 rounded-xl font-semibold text-sm uppercase tracking-wider hover:bg-warm-text/90 transition flex items-center justify-center gap-2 disabled:opacity-70"
                 >
-                  Send Message
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
-                  </svg>
+                  {status === "sending" ? (
+                    <>
+                      <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      Send Message
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+                      </svg>
+                    </>
+                  )}
                 </button>
               </form>
             )}
           </div>
         </div>
       </section>
+
+      {/* CSS Animations */}
+      <style jsx global>{`
+        @keyframes drawCheck {
+          to {
+            stroke-dashoffset: 0;
+          }
+        }
+        @keyframes bounceIn {
+          0% { transform: scale(0); opacity: 0; }
+          50% { transform: scale(1.15); }
+          100% { transform: scale(1); opacity: 1; }
+        }
+        @keyframes flyAway {
+          0% { transform: translateX(-50%) translateY(0) rotate(0deg); opacity: 1; }
+          50% { transform: translateX(0%) translateY(-20px) rotate(-15deg); opacity: 1; }
+          100% { transform: translateX(100px) translateY(-40px) rotate(-30deg); opacity: 0; }
+        }
+        @keyframes fadeSlideUp {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </div>
   );
 }

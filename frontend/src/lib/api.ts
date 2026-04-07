@@ -65,6 +65,13 @@ export const authAPI = {
       method: "PUT",
       body: JSON.stringify({ password }),
     }),
+  getNotificationPrefs: () =>
+    request<{ smsNotifications: boolean; phone: string | null }>("/auth/me/notifications"),
+  updateNotificationPrefs: (smsNotifications: boolean) =>
+    request<{ smsNotifications: boolean }>("/auth/me/notifications", {
+      method: "PUT",
+      body: JSON.stringify({ smsNotifications }),
+    }),
 };
 
 // Products
@@ -152,6 +159,15 @@ export const chatbotAPI = {
       isDelivered: boolean;
       createdAt: string;
     }>(`/orders/track/${orderId}`),
+};
+
+// Contact
+export const contactAPI = {
+  send: (data: { name: string; email: string; subject: string; message: string }) =>
+    request<{ message: string }>("/contact", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
 };
 
 // Types

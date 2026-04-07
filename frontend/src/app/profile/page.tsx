@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useApp } from "@/lib/store";
-import { ordersAPI, type Order } from "@/lib/api";
+import { ordersAPI, authAPI, type Order } from "@/lib/api";
 import { formatPrice } from "@/lib/format";
 
 export default function ProfilePage() {
@@ -13,11 +13,30 @@ export default function ProfilePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [smsEnabled, setSmsEnabled] = useState(true);
+  const [maskedPhone, setMaskedPhone] = useState<string | null>(null);
+  const [smsLoading, setSmsLoading] = useState(false);
 
   useEffect(() => {
     if (!user) { router.push("/login"); return; }
     ordersAPI.getMy().then(setOrders).catch(() => {}).finally(() => setLoading(false));
+    authAPI.getNotificationPrefs().then((prefs) => {
+      setSmsEnabled(prefs.smsNotifications);
+      setMaskedPhone(prefs.phone);
+    }).catch(() => {});
   }, [user, router]);
+
+  const toggleSmsNotifications = async () => {
+    setSmsLoading(true);
+    try {
+      const res = await authAPI.updateNotificationPrefs(!smsEnabled);
+      setSmsEnabled(res.smsNotifications);
+    } catch {
+      // revert on failure
+    } finally {
+      setSmsLoading(false);
+    }
+  };
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -157,6 +176,56 @@ export default function ProfilePage() {
               </svg>
             </Link>
           ))}
+        </div>
+      </div>
+
+      {/* Notification Settings */}
+      <div className="mt-6 bg-white rounded-2xl border border-warm-border overflow-hidden">
+        <h2 className="font-[Georgia] font-bold text-warm-text px-6 pt-5 pb-3">Notification Settings</h2>
+        <div className="px-6 pb-5 space-y-4">
+          {/* SMS Login Alerts */}
+          <div className="flex items-center justify-between py-3 border-b border-warm-border/50">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-terracotta/10 flex items-center justify-center shrink-0">
+                <svg className="w-5 h-5 text-terracotta" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-warm-text">SMS Login Alerts</p>
+                <p className="text-[11px] text-warm-muted">
+                  Get notified on your phone when someone logs into your account
+                  {maskedPhone && <span className="ml-1 font-mono">({maskedPhone})</span>}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={toggleSmsNotifications}
+              disabled={smsLoading}
+              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-terracotta/30 focus:ring-offset-2 disabled:opacity-50 ${
+                smsEnabled ? "bg-terracotta" : "bg-warm-border"
+              }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                  smsEnabled ? "translate-x-5" : "translate-x-0"
+                }`}
+              />
+            </button>
+          </div>
+
+          {/* Info row */}
+          <div className="flex items-start gap-3 py-2">
+            <div className="w-10 h-10 rounded-xl bg-sage/10 flex items-center justify-center shrink-0">
+              <svg className="w-5 h-5 text-sage" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-warm-text">Order Updates</p>
+              <p className="text-[11px] text-warm-muted">Receive SMS when your order status changes (always on for active orders)</p>
+            </div>
+          </div>
         </div>
       </div>
 
